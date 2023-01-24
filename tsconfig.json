@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+        "allowJs": false,
+        "strict": true,
+        "strictNullChecks": true,
+        "noUnusedParameters": true,
+        "forceConsistentCasingInFileNames": true,
+        "allowUnreachableCode": false,
+        "lib": ["ES6"],
+        "target": "ES6",
+        "module": "CommonJS",
+        "moduleResolution": "Node",
+        "declaration": true,
+        "skipDefaultLibCheck": true,
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "outDir": "dist"
+    },
+    "include": ["src"]
+}
