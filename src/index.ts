@@ -76,7 +76,7 @@ export async function createDocumentation(options: TypeDocNextraInit): Promise<D
         app.options.addReader(new TypeDoc.TypeDocReader());
 
         app.bootstrap({
-            plugin: ['typedoc-plugin-as-member-of'],
+            plugin: [],
             entryPoints: options.input,
             tsconfig: options.tsconfigPath
         });
@@ -265,7 +265,7 @@ export async function createDocumentation(options: TypeDocNextraInit): Promise<D
                         recursive: true
                     });
 
-                    await writeFile(path.join(catPath, `${m.name}.${m.type || path.extname(m.path)}`), m.content);
+                    await writeFile(path.join(catPath, `${m.name}${m.type || path.extname(m.path)}`), m.content);
                 }));
             }
         }

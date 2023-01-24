@@ -11,7 +11,9 @@
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/neplextech/typedoc-nextra.git"
@@ -42,7 +44,6 @@
   "dependencies": {
     "common-tags": "^1.8.2",
     "tmp": "^0.2.1",
-    "typedoc": "^0.23.24",
-    "typedoc-plugin-as-member-of": "^1.0.2"
+    "typedoc": "^0.23.24"
   }
 }

@@ -1807,19 +1807,9 @@ __metadata:
     tmp: ^0.2.1
     tsup: ^6.5.0
     typedoc: ^0.23.24
-    typedoc-plugin-as-member-of: ^1.0.2
     typescript: ^4.9.4
   languageName: unknown
   linkType: soft
-
-"typedoc-plugin-as-member-of@npm:^1.0.2":
-  version: 1.0.2
-  resolution: "typedoc-plugin-as-member-of@npm:1.0.2"
-  peerDependencies:
-    typedoc: ">=0.7 <1.11.1"
-  checksum: 5d82e236c85b2dd4314952f2200223022f96e84ca330e4b4992b792f6762246259d17137305c98134e885042c85bea863d77ca8eaeaee4a6e05fa094d75b761a
-  languageName: node
-  linkType: hard
 
 "typedoc@npm:^0.23.24":
   version: 0.23.24
