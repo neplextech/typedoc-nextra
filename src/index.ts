@@ -102,7 +102,8 @@ export async function createDocumentation(options: TypeDocNextraInit): Promise<D
         }
     };
 
-    const modules = data?.children?.filter((res) => res.kind === TypeDoc.ReflectionKind.Module);
+    const modules = data?.kind === TypeDoc.ReflectionKind.Project ? [data] : data?.children?.filter((res) => res.kind === TypeDoc.ReflectionKind.Module);
+
     const mdTransformer = new TypeDocNextra({
         linker: (t, src) => {
             if (options.noLinkTypes) return t;
@@ -232,23 +233,25 @@ export async function createDocumentation(options: TypeDocNextraInit): Promise<D
                 const module = doc.modules[moduleIdx];
 
                 await Promise.all([
-                    module.classes.flatMap(cl => {
+                    module.classes.flatMap((cl) => {
                         return cl.markdown.map(async (md) => {
                             const classPath = path.join(options.output!, 'classes', module.name);
 
-                            if (!existsSync(classPath)) await mkdir(classPath, {
-                                recursive: true
-                            });
+                            if (!existsSync(classPath))
+                                await mkdir(classPath, {
+                                    recursive: true
+                                });
 
                             await writeFile(path.join(classPath, `${md.name}.${options.extension || 'mdx'}`), md.content);
                         });
                     }),
-                    module.types.flatMap(cl => {
+                    module.types.flatMap((cl) => {
                         return cl.markdown.map(async (md) => {
                             const typesPath = path.join(options.output!, 'types', module.name);
-                            if (!existsSync(typesPath)) await mkdir(typesPath, {
-                                recursive: true
-                            });
+                            if (!existsSync(typesPath))
+                                await mkdir(typesPath, {
+                                    recursive: true
+                                });
                             await writeFile(path.join(typesPath, `${md.name}.${options.extension || 'mdx'}`), md.content);
                         });
                     })
@@ -258,15 +261,18 @@ export async function createDocumentation(options: TypeDocNextraInit): Promise<D
             for (const fileIdx in doc.custom) {
                 const file = doc.custom[fileIdx];
 
-                await Promise.all(file.map(async (m) => {
-                    const catPath = path.join(options.output!, path.normalize(m.category));
+                await Promise.all(
+                    file.map(async (m) => {
+                        const catPath = path.join(options.output!, path.normalize(m.category));
 
-                    if (!existsSync(catPath)) await mkdir(catPath, {
-                        recursive: true
-                    });
+                        if (!existsSync(catPath))
+                            await mkdir(catPath, {
+                                recursive: true
+                            });
 
-                    await writeFile(path.join(catPath, `${m.name}${m.type || path.extname(m.path)}`), m.content);
-                }));
+                        await writeFile(path.join(catPath, `${m.name}${m.type || path.extname(m.path)}`), m.content);
+                    })
+                );
             }
         }
     }
