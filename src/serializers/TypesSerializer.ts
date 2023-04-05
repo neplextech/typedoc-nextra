@@ -27,7 +27,7 @@ export class TypesSerializer extends AbstractSerializer {
     public serialize(): DocumentedTypes {
         const base = {
             deprecated: !!this.declaration.comment?.blockTags?.some((r) => r.tag === '@deprecated'),
-            description: this.declaration.comment?.summary?.[0]?.text || null,
+            description: this.declaration.comment?.summary?.map((t) => t.text).join('') || null,
             metadata: getFileMetadata(this.declaration),
             name: getName(this.declaration),
             parameters: [],
@@ -44,7 +44,7 @@ export class TypesSerializer extends AbstractSerializer {
                     if (m.type?.type !== 'reflection')
                         return {
                             name: m.name,
-                            description: m.comment?.summary?.[0]?.text || null,
+                            description: m.comment?.summary?.map((t) => t.text).join('') || null,
                             value: m.defaultValue || null,
                             abstract: !!m.flags.isAbstract,
                             default: m.defaultValue || null,
@@ -60,7 +60,7 @@ export class TypesSerializer extends AbstractSerializer {
 
                     return {
                         name: m.name,
-                        description: (m.type?.declaration?.signatures?.[0]?.comment?.summary || m.comment?.summary)?.[0]?.text || null,
+                        description: (m.type?.declaration?.signatures?.[0]?.comment?.summary || m.comment?.summary)?.map((t) => t.text).join('') || null,
                         value: m.defaultValue || null,
                         abstract: !!m.flags.isAbstract,
                         default: m.defaultValue || null,

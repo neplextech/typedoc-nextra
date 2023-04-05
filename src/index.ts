@@ -2,11 +2,14 @@ import * as TypeDoc from 'typedoc';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import tmp from 'tmp';
 import path from 'path';
-import { ClassSerializer, DocumentedClass, DocumentedClassMethod, DocumentedClassProperty, DocumentedTypes, TypesSerializer } from './serializers';
+import { ClassSerializer, DocumentedClass, DocumentedTypes, TypesSerializer } from './serializers';
 import { TypeDocNextra, TypeDocNextraMarkdownBuild } from './TypeDocNextra';
-import { makeId } from './utils';
+import { escape } from './utils';
 import { hyperlink } from './utils/md';
 import { existsSync } from 'fs';
+import { DefaultLinksFactory } from './utils/links';
+
+export type TypeDocNextraLink = Record<string, string>;
 
 export interface TypeDocNextraInit {
     jsonInputPath?: string | null;
@@ -21,6 +24,7 @@ export interface TypeDocNextraInit {
     markdown?: boolean;
     noLinkTypes?: boolean;
     extension?: string;
+    links?: TypeDocNextraLink;
 }
 
 export interface TypeDocNextraCustomFile {
@@ -62,7 +66,8 @@ export interface Documentation {
 export async function createDocumentation(options: TypeDocNextraInit): Promise<Documentation> {
     let data: TypeDoc.JSONOutput.ProjectReflection | undefined = undefined;
 
-    options.noLinkTypes ??= true;
+    options.noLinkTypes ??= false;
+    options.links ??= DefaultLinksFactory;
 
     const start = performance.now();
 
@@ -101,60 +106,68 @@ export async function createDocumentation(options: TypeDocNextraInit): Promise<D
             timestamp: 0
         }
     };
-
-    const modules = data?.kind === TypeDoc.ReflectionKind.Project ? [data] : data?.children?.filter((res) => res.kind === TypeDoc.ReflectionKind.Module);
-
+    const modules = data?.kind === TypeDoc.ReflectionKind.Project ? data : data?.children?.filter((res) => res.kind === TypeDoc.ReflectionKind.Module);
     const mdTransformer = new TypeDocNextra({
-        linker: (t, src) => {
-            if (options.noLinkTypes) return t;
+        links: options.links,
+        linker: (t) => {
+            const { noLinkTypes = false, links = {} } = options;
+            if (noLinkTypes) return escape(t);
+            const linkKeys = Object.entries(links);
 
-            src ??= t;
-
-            let metadata: DocumentedClass | DocumentedClassProperty | DocumentedClassMethod | DocumentedTypes | null = null,
-                prefix = '';
-
-            for (const c of Object.values(doc.modules)) {
-                for (const res of c.classes) {
-                    if (res.data.name === src) {
-                        metadata = res.data;
-                        prefix = 'c-';
-                        break;
-                    }
-
-                    const foundProp = res.data.properties.find((r) => r.name === src);
-                    if (foundProp) {
-                        metadata = foundProp;
-                        prefix = 'p-';
-                        break;
-                    }
-
-                    const foundMethod = res.data.methods.find((r) => r.name === src);
-                    if (foundMethod) {
-                        metadata = foundMethod;
-                        prefix = 'm-';
-                        break;
-                    }
-                }
-
-                if (!metadata) {
-                    for (const res of c.types) {
-                        if (res.data.name === src) {
-                            metadata = res.data;
-                            prefix = 't-';
-                            break;
-                        }
-                    }
+            for (const [li, val] of linkKeys) {
+                if (!Array.isArray(t) && li.toLowerCase() === t.toLowerCase()) {
+                    return hyperlink(escape(t), val);
                 }
             }
 
-            if (!metadata) return t;
-            const link = `/${prefix === 't-' ? 'types' : 'classes'}/${metadata.name}#${makeId(src, prefix)}`;
-            return hyperlink(t, link);
+            return escape(t);
+
+            // TODO: auto link
+            // let metadata: DocumentedClass | DocumentedClassProperty | DocumentedClassMethod | DocumentedTypes | null = null,
+            //     prefix = '';
+
+            // for (const c of Object.values(doc.modules)) {
+            //     for (const res of c.classes) {
+            //         if (res.data.name === src) {
+            //             metadata = res.data;
+            //             prefix = 'c-';
+            //             break;
+            //         }
+
+            //         const foundProp = res.data.properties.find((r) => r.name === src);
+            //         if (foundProp) {
+            //             metadata = foundProp;
+            //             prefix = 'p-';
+            //             break;
+            //         }
+
+            //         const foundMethod = res.data.methods.find((r) => r.name === src);
+            //         if (foundMethod) {
+            //             metadata = foundMethod;
+            //             prefix = 'm-';
+            //             break;
+            //         }
+            //     }
+
+            //     if (!metadata) {
+            //         for (const res of c.types) {
+            //             if (res.data.name === src) {
+            //                 metadata = res.data;
+            //                 prefix = 't-';
+            //                 break;
+            //             }
+            //         }
+            //     }
+            // }
+
+            // if (!metadata) return t;
+            // const link = `/${prefix === 't-' ? 'types' : 'classes'}/${metadata.name}#${makeId(src, prefix)}`;
+            // return hyperlink(t, link);
         }
     });
 
     if (modules) {
-        modules.forEach((mod) => {
+        (Array.isArray(modules) ? modules : modules.children || []).forEach((mod) => {
             if (!mod.children?.length) return;
 
             doc.modules[mod.name] ??= {

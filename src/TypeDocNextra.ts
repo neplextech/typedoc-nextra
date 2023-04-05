@@ -1,7 +1,7 @@
-import { stripIndents } from 'common-tags';
 import { DocumentedClass, DocumentedClassConstructor, DocumentedClassMethod, DocumentedClassProperty, DocumentedTypes } from './serializers';
 import { bold, code, codeBlock, heading, hyperlink, table } from './utils/md';
 import { FileMetadata, escape } from './utils';
+import { TypeDocNextraLink } from '.';
 
 export interface TypeDocNextraMarkdownBuild {
     name: string;
@@ -10,7 +10,8 @@ export interface TypeDocNextraMarkdownBuild {
 }
 
 export interface TypeDocNextraMdBuilderOptions {
-    linker: (t: string, s?: string) => string;
+    linker: (t: string, s: string) => string;
+    links: TypeDocNextraLink;
 }
 
 export class TypeDocNextra {
@@ -20,9 +21,9 @@ export class TypeDocNextra {
     }
 
     public getClassHeading(c: DocumentedClass) {
-        return `${heading(escape(c.name), 2)}${c.extends ? ` extends ${this.linker(escape(c.extends), c.extends)}` : ''}${
-            c.implements ? ` implements ${this.linker(escape(c.implements), c.implements)}` : ''
-        }${c.description ? `\n${c.description}\n` : ''}`;
+        return `${heading(escape(c.name), 2)}${c.extends ? ` extends ${this.linker(c.extends, c.extends)}` : ''}${c.implements ? ` implements ${this.linker(c.implements, c.implements)}` : ''}${
+            c.description ? `\n${c.description}\n` : ''
+        }`;
     }
 
     public getCtor(c: DocumentedClassConstructor) {
@@ -37,8 +38,15 @@ export class TypeDocNextra {
         );
 
         if (c.parameters.length) {
-            const tableHead = ['Parameter', 'Type', 'Optional', 'Description'];
-            const tableBody = c.parameters.map((m) => [escape(m.name), this.linker(escape(m.type || 'any'), m.type || 'any'), m.optional ? '✅' : '❌', m.description || '-']);
+            const tableHead = ['Parameter', 'Type', 'Optional'];
+            if (c.parameters.some((p) => p.description && p.description.trim().length > 0)) tableHead.push('Description');
+            const tableBody = c.parameters.map((m) => {
+                const params = [escape(m.name), this.linker(m.type || 'any', m.type || 'any'), m.optional ? '✅' : '❌'];
+
+                if (tableHead.includes('Description')) params.push(m.description || 'N/A');
+
+                return params;
+            });
 
             return `\n${ctor}\n${table(tableHead, tableBody)}\n`;
         }
@@ -67,36 +75,34 @@ export class TypeDocNextra {
     }
 
     public getTypeMarkdown(t: DocumentedTypes) {
-        return stripIndents`${heading(escape(t.name), 2)}${t.description ? '\n' + t.description : ''}
-        ${t.deprecated ? `\n- ${bold('⚠️ Deprecated')}` : ''}
-        ${
+        return [
+            heading(escape(t.name), 2),
+            t.description ? '\n' + t.description : '',
+            t.deprecated ? `\n- ${bold('⚠️ Deprecated')}` : '',
             t.properties.length
                 ? (() => {
-                      const tableHead = ['Property', 'Type', 'Value', 'Description'];
-                      const tableBody = t.properties.map((n) => [escape(n.name), this.linker(escape(n.type || 'any'), n.type || 'any'), escape(n.value || 'N/A'), n.description || '-']);
+                      const tableHead = ['Property', 'Type', 'Value'];
+                      if (t.properties.some((p) => p.description && p.description.trim().length > 0)) tableHead.push('Description');
+                      const tableBody = t.properties.map((n) => {
+                          const params = [escape(n.name), this.linker(n.type || 'any', n.type || 'any'), escape(n.value || 'N/A')];
+
+                          if (tableHead.includes('Description')) params.push(n.description || 'N/A');
+
+                          return params;
+                      });
 
                       return `\n${table(tableHead, tableBody)}\n`;
                   })()
-                : ''
-        }
-        ${
-            t.metadata
-                ? (() => {
-                      if (t.metadata.url) {
-                          return `\n- ${hyperlink('Source', t.metadata.url)}`;
-                      } else {
-                          return `\n- Source: ${code(`${t.metadata.directory}/${t.metadata.name}#L${t.metadata.line}`)}`;
-                      }
-                  })()
-                : ''
-        }`.trim();
+                : '',
+            t.metadata?.url ? `\n- ${hyperlink('Source', t.metadata.url)}` : ''
+        ]
+            .filter((r) => r.length > 0)
+            .join('\n')
+            .trim();
     }
 
     public getMarkdown(c: DocumentedClass) {
-        return stripIndents`${this.getClassHeading(c)}
-        ${this.getCtor(c.constructor!)}
-        ${this.getProperties(c.properties)}
-        ${this.getMethods(c.methods)}`;
+        return [this.getClassHeading(c), this.getCtor(c.constructor!), this.getProperties(c.properties), this.getMethods(c.methods)].join('\n\n');
     }
 
     public getProperties(properties: DocumentedClassProperty[]) {
@@ -104,21 +110,12 @@ export class TypeDocNextra {
 
         const head = heading('Properties', 2);
         const body = properties.map((m) => {
-            const name = `${m.private ? 'private' : 'public'} ${m.static ? 'static' : ''} ${escape(m.name)}`.trim();
-            const title = heading(`${name}: ${this.linker(escape(m.type || 'any'), m.type || 'any')}`, 3);
-            const desc = stripIndents`${m.description || ''}            
-            ${m.deprecated ? `\n- ${bold('⚠️ Deprecated')}` : ''}
-            ${
-                m.metadata
-                    ? (() => {
-                          if (m.metadata.url) {
-                              return `\n- ${hyperlink('Source', m.metadata.url)}`;
-                          } else {
-                              return `\n- Source: ${code(`${m.metadata.directory}/${m.metadata.name}#L${m.metadata.line}`)}`;
-                          }
-                      })()
-                    : ''
-            }`.trim();
+            const name = `${m.private ? 'private' : 'public'} ${m.static ? 'static ' : ''}${escape(m.name)}`.trim();
+            const title = heading(`${name}: ${this.linker(m.type || 'any', m.type || 'any')}`, 3);
+            const desc = [m.description || '', m.deprecated ? `\n- ${bold('⚠️ Deprecated')}` : '', m.metadata?.url ? `\n- ${hyperlink('Source', m.metadata.url)}` : '']
+                .filter((r) => r.length > 0)
+                .join('\n')
+                .trim();
 
             return `${title}\n${desc}`;
         });
@@ -131,42 +128,37 @@ export class TypeDocNextra {
 
         const head = heading('Methods', 2);
         const body = methods.map((m) => {
-            const name = `${m.private ? `private` : `public`} ${m.static ? 'static' : ''} ${escape(m.name)}(${m.parameters
+            const name = `${m.private ? `private` : `public`} ${m.static ? 'static ' : ''}${escape(m.name)}(${m.parameters
                 .filter((r) => !r.name.includes('.'))
                 .map((m) => {
                     return `${m.name}${m.optional ? '?' : ''}`;
                 })
                 .join(', ')})`.trim();
-            const title = heading(`${name}: ${m.returns?.type ? `${this.linker(escape(m.returns.type), m.returns.type)}` : 'any'}`, 3);
-            const desc = stripIndents`${m.description || ''}
-            ${m.deprecated ? `\n- ${bold('⚠️ Deprecated')}` : ''}
-            ${m.examples ? '\n' + m.examples.map((m) => codeBlock(m, 'typescript')).join('\n\n') : ''}
-            ${
+            const title = heading(`${name}: ${m.returns?.type ? `${this.linker(m.returns.type || 'any', m.returns.type)}` : 'any'}`, 3);
+            const desc = [
+                m.description || '',
+                m.deprecated ? `\n- ${bold('⚠️ Deprecated')}` : '',
+                m.examples ? '\n' + m.examples.map((m) => (m.includes('```') ? m : codeBlock(m, 'typescript'))).join('\n\n') : '',
                 m.parameters.length
                     ? (() => {
-                          const tableHead = ['Parameter', 'Type', 'Optional', 'Description'];
-                          const tableBody = m.parameters.map((n) => [
-                              n.default ? `${escape(n.name)}=${code(escape(n.default))}` : escape(n.name),
-                              this.linker(escape(n.type || 'any'), n.type || 'any'),
-                              n.optional ? '✅' : '❌',
-                              n.description || '-'
-                          ]);
+                          const tableHead = ['Parameter', 'Type', 'Optional'];
+                          if (m.parameters.some((p) => p.description && p.description.trim().length > 0)) tableHead.push('Description');
+                          const tableBody = m.parameters.map((n) => {
+                              const params = [n.default ? `${escape(n.name)}=${code(escape(n.default))}` : escape(n.name), this.linker(n.type || 'any', n.type || 'any'), n.optional ? '✅' : '❌'];
+
+                              if (tableHead.includes('Description')) params.push(n.description || 'N/A');
+
+                              return params;
+                          });
 
                           return `\n${table(tableHead, tableBody)}\n`;
                       })()
-                    : ''
-            }
-            ${
-                m.metadata
-                    ? (() => {
-                          if (m.metadata.url) {
-                              return `\n- ${hyperlink('Source', m.metadata.url)}`;
-                          } else {
-                              return `\n- Source: ${code(`${m.metadata.directory}/${m.metadata.name}#L${m.metadata.line}`)}`;
-                          }
-                      })()
-                    : ''
-            }`.trim();
+                    : '',
+                m.metadata?.url ? `\n- ${hyperlink('Source', m.metadata.url)}` : ''
+            ]
+                .filter((r) => r.length > 0)
+                .join('\n')
+                .trim();
 
             return `${title}\n${desc}`;
         });

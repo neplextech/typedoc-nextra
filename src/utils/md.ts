@@ -84,5 +84,5 @@ export function image<T extends string, U extends string>(alt: T, link: U) {
 export function table(heading: string[], body: string[][]) {
     return stripIndents`| ${heading.join(' | ')} |
     | ${heading.map(() => '-'.repeat(11)).join(' | ')} |
-    ${body.map((m) => `| ${m.join(' | ')} |`).join('\n')}`;
+    ${body.map((m) => `| ${m.join(' | ').replace(/\n/g, ' ')} |`).join('\n')}`;
 }

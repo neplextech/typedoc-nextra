@@ -1,4 +1,4 @@
-import { JSONOutput, ReflectionKind, TypeParameterReflection } from 'typedoc';
+import { JSONOutput, ReflectionKind } from 'typedoc';
 import { FileMetadata, getFileMetadata, getName, parseType, parseTypes } from '../utils';
 import { AbstractSerializer } from './AbstractSerializer';
 
@@ -91,7 +91,7 @@ export class ClassSerializer extends AbstractSerializer {
                 : null,
             metadata: getFileMetadata(this.declaration),
             deprecated: !!this.declaration.comment?.blockTags?.some((r) => r.tag === '@deprecated'),
-            description: this.declaration.comment?.summary?.[0]?.text || null,
+            description: this.declaration.comment?.summary?.map((t) => t.text).join('') || null,
             extends: this.declaration.extendedTypes?.length ? parseType(this.declaration.extendedTypes[0]) : null,
             implements: this.declaration.implementedTypes?.length ? parseType(this.declaration.implementedTypes[0]) : null,
             rawExtends: this.declaration.extendedTypes?.length ? parseTypes(this.declaration.extendedTypes[0]) : null,
@@ -108,7 +108,7 @@ export class ClassSerializer extends AbstractSerializer {
             abstract: decl.flags.isAbstract || !!decl.comment?.blockTags?.some((r) => r.tag === '@abstract'),
             default: decl.defaultValue || decl.comment?.blockTags?.find((r) => r.tag === '@default')?.content?.[0].text || null,
             deprecated: !!decl.comment?.blockTags?.some((r) => r.tag === '@deprecated'),
-            description: decl.comment?.summary?.[0]?.text || null,
+            description: decl.comment?.summary?.map((t) => t.text).join('') || null,
             metadata: getFileMetadata(decl),
             name: decl.name,
             private: decl.flags.isPrivate || !!decl.comment?.blockTags?.some((r) => r.tag === '@private'),
@@ -128,12 +128,12 @@ export class ClassSerializer extends AbstractSerializer {
             return Object.assign(base, {
                 abstract: getter.flags.isAbstract || getter.comment?.blockTags?.some((r) => r.tag === '@abstract'),
                 deprecated: getter.comment?.blockTags?.some((r) => r.tag === '@deprecated'),
-                description: getter.comment?.summary?.[0]?.text,
+                description: getter.comment?.summary?.map((t) => t.text).join(''),
                 metadata: getFileMetadata(getter as unknown as JSONOutput.DeclarationReflection),
                 name: getter.name,
                 private: getter.flags.isPrivate || getter.comment?.blockTags?.some((r) => r.tag === '@private'),
                 readonly: getter.flags.isReadonly || getter.comment?.blockTags?.some((r) => r.tag === '@readonly'),
-                see: getter.comment?.blockTags?.filter((r) => r.tag === '@see').map((m) => m.content[0].text),
+                see: getter.comment?.blockTags?.filter((r) => r.tag === '@see').map((m) => m.content.map((t) => t.text).join('')),
                 static: getter.flags.isStatic || getter.comment?.blockTags?.some((r) => r.tag === '@static'),
                 type: getter.type ? parseType(getter.type) : 'any'
             } as Partial<DocumentedClassProperty>);
@@ -147,18 +147,22 @@ export class ClassSerializer extends AbstractSerializer {
 
         return {
             name: decl.name,
-            description: signature.comment?.summary?.[0]?.text || null,
-            see: signature.comment?.blockTags?.filter((r) => r.tag === '@see').map((t) => t.content[0].text) || [],
+            description: signature.comment?.summary?.map((t) => t.text).join('') || null,
+            see: signature.comment?.blockTags?.filter((r) => r.tag === '@see').map((t) => t.content.map((t) => t.text).join('')) || [],
             static: !!signature.flags.isStatic || !!decl.flags.isStatic,
             private: decl.flags.isPrivate || !!signature.comment?.blockTags?.filter((r) => r.tag === '@private').length,
-            examples: signature.comment?.blockTags?.filter((r) => r.tag === '@example').map((t) => t.content[0].text) || [],
+            examples: signature.comment?.blockTags?.filter((r) => r.tag === '@example').map((t) => t.content.map((t) => t.text).join('')) || [],
             abstract: decl.flags.isAbstract || !!signature.comment?.blockTags?.some((r) => r.tag === '@abstract'),
             deprecated: !!signature.comment?.blockTags?.some((r) => r.tag === '@deprecated'),
             parameters: (signature as any).parameters?.map((m: any) => this.parseParameter(m)) || ((decl as any).parameters || decl.typeParameters)?.map((m: any) => this.parseParameter(m)) || [],
             returns: {
                 type: signature.type ? parseType(signature.type) : 'any',
                 rawType: signature.type ? parseTypes(signature.type) : ['any'],
-                description: signature.comment?.blockTags?.find((r) => r.tag === '@returns')?.content?.[0]?.text || null
+                description:
+                    signature.comment?.blockTags
+                        ?.find((r) => r.tag === '@returns')
+                        ?.content?.map((t) => t.text)
+                        .join('') || null
             },
             metadata: getFileMetadata(decl)
         };
@@ -167,7 +171,11 @@ export class ClassSerializer extends AbstractSerializer {
     public parseParameter(decl: JSONOutput.TypeParameterReflection): DocumentedParameter {
         return {
             name: decl.name,
-            description: decl.comment?.summary?.[0].text.trim() || null,
+            description:
+                decl.comment?.summary
+                    ?.map((t) => t.text)
+                    .join('')
+                    .trim() || null,
             optional: !!decl.flags.isOptional,
             default: (decl.default as any)?.name || decl.comment?.blockTags?.find((r) => r.tag === '@default')?.content[0].text || null,
             type: decl.type ? parseType(decl.type) : 'any',
