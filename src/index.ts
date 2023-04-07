@@ -2,7 +2,7 @@ import * as TypeDoc from 'typedoc';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import tmp from 'tmp';
 import path from 'path';
-import { ClassSerializer, DocumentedClass, DocumentedTypes, TypesSerializer } from './serializers';
+import { ClassSerializer, DocumentedClass, DocumentedFunction, DocumentedTypes, FunctionSerializer, TypesSerializer } from './serializers';
 import { TypeDocNextra, TypeDocNextraMarkdownBuild } from './TypeDocNextra';
 import { escape } from './utils';
 import { hyperlink } from './utils/md';
@@ -58,6 +58,10 @@ export interface Documentation {
                 markdown: TypeDocNextraMarkdownBuild[];
                 data: DocumentedTypes;
             }[];
+            functions: {
+                markdown: TypeDocNextraMarkdownBuild[];
+                data: DocumentedFunction;
+            }[];
         }
     >;
     metadata: DocumentationMetadata;
@@ -106,21 +110,28 @@ export async function createDocumentation(options: TypeDocNextraInit): Promise<D
             timestamp: 0
         }
     };
-    const modules = data?.kind === TypeDoc.ReflectionKind.Project ? data : data?.children?.filter((res) => res.kind === TypeDoc.ReflectionKind.Module);
+    const modules = data?.kind === TypeDoc.ReflectionKind.Project ? [data] : data?.children?.filter((res) => res.kind === TypeDoc.ReflectionKind.Module);
+
     const mdTransformer = new TypeDocNextra({
         links: options.links,
-        linker: (t) => {
+        linker: (t, r) => {
             const { noLinkTypes = false, links = {} } = options;
             if (noLinkTypes) return escape(t);
             const linkKeys = Object.entries(links);
 
-            for (const [li, val] of linkKeys) {
-                if (!Array.isArray(t) && li.toLowerCase() === t.toLowerCase()) {
-                    return hyperlink(escape(t), val);
+            const linkTypes = (type: string) => {
+                for (const [li, val] of linkKeys) {
+                    if (li.toLowerCase() === type.toLowerCase()) {
+                        const hyl = hyperlink(escape(type), val);
+                        return hyl;
+                    }
                 }
-            }
 
-            return escape(t);
+                return escape(type);
+            };
+
+            const linked = r.map((p) => linkTypes(p)).join('');
+            return linked;
 
             // TODO: auto link
             // let metadata: DocumentedClass | DocumentedClassProperty | DocumentedClassMethod | DocumentedTypes | null = null,
@@ -166,18 +177,19 @@ export async function createDocumentation(options: TypeDocNextraInit): Promise<D
         }
     });
 
-    if (modules) {
-        (Array.isArray(modules) ? modules : modules.children || []).forEach((mod) => {
-            if (!mod.children?.length) return;
+    if (Array.isArray(modules)) {
+        modules.forEach((mod) => {
+            if (!mod.children) return;
 
             doc.modules[mod.name] ??= {
                 classes: [],
+                functions: [],
                 name: mod.name,
                 types: []
             };
 
             const currentModule = doc.modules[mod.name];
-            mod.children.forEach((child) => {
+            mod.children?.forEach((child) => {
                 switch (child.kind) {
                     case TypeDoc.ReflectionKind.Class:
                         {
@@ -199,6 +211,17 @@ export async function createDocumentation(options: TypeDocNextraInit): Promise<D
                             currentModule.types.push({
                                 data: serialized,
                                 markdown: options.markdown ? mdTransformer.transformTypes([serialized]) : []
+                            });
+                        }
+                        break;
+                    case TypeDoc.ReflectionKind.Function:
+                        {
+                            const functionsSerializer = new FunctionSerializer(child);
+                            const serialized = functionsSerializer.serialize();
+
+                            currentModule.functions.push({
+                                data: serialized,
+                                markdown: options.markdown ? mdTransformer.transformFunctions([serialized]) : []
                             });
                         }
                         break;
@@ -246,7 +269,7 @@ export async function createDocumentation(options: TypeDocNextraInit): Promise<D
                 const module = doc.modules[moduleIdx];
 
                 await Promise.all([
-                    module.classes.flatMap((cl) => {
+                    ...module.classes.flatMap((cl) => {
                         return cl.markdown.map(async (md) => {
                             const classPath = path.join(options.output!, 'classes', module.name);
 
@@ -258,7 +281,7 @@ export async function createDocumentation(options: TypeDocNextraInit): Promise<D
                             await writeFile(path.join(classPath, `${md.name}.${options.extension || 'mdx'}`), md.content);
                         });
                     }),
-                    module.types.flatMap((cl) => {
+                    ...module.types.flatMap((cl) => {
                         return cl.markdown.map(async (md) => {
                             const typesPath = path.join(options.output!, 'types', module.name);
                             if (!existsSync(typesPath))
@@ -266,6 +289,16 @@ export async function createDocumentation(options: TypeDocNextraInit): Promise<D
                                     recursive: true
                                 });
                             await writeFile(path.join(typesPath, `${md.name}.${options.extension || 'mdx'}`), md.content);
+                        });
+                    }),
+                    ...module.functions.flatMap((cl) => {
+                        return cl.markdown.map(async (md) => {
+                            const funcsPath = path.join(options.output!, 'functions', module.name);
+                            if (!existsSync(funcsPath))
+                                await mkdir(funcsPath, {
+                                    recursive: true
+                                });
+                            await writeFile(path.join(funcsPath, `${md.name}.${options.extension || 'mdx'}`), md.content);
                         });
                     })
                 ]);

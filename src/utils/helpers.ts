@@ -63,6 +63,12 @@ export function parseType(t: JSONOutput.SomeType): string {
 
             return '{}';
         }
+        case 'template-literal':
+            return t.tail
+                .map((tail) => {
+                    return `${t.head.replace(/\n/g, '\\n')}\\$\{${escape(parseType(tail[0]))}\}${tail[1].replace(/\n/g, '\\n')}`;
+                })
+                .join(' | ');
         case 'literal':
             return typeof t.value === 'string' ? `'${t.value}'` : `${t.value}`;
         case 'tuple':
@@ -136,6 +142,8 @@ export function parseTypes(t: JSONOutput.SomeType): string[] {
         }
         case 'literal':
             return typeof t.value === 'string' ? ["'", t.value, "'"] : [`${t.value}`];
+        case 'template-literal':
+            return t.tail.map((tail) => `\`${t.head}${t.tail.length ? `\\$\{${parseType(tail[0])}\}\`` : ''}`);
         case 'tuple':
             return ['[', ...(t.elements?.flatMap(parseTypes) || []), ']'];
         case 'typeOperator':
@@ -144,7 +152,7 @@ export function parseTypes(t: JSONOutput.SomeType): string[] {
             return t.types
                 .flatMap(parseTypes)
                 .filter((t) => !!t)
-                .flat();
+                .flat(Infinity);
         case 'query':
             return ['(', 'typeof', ' ', ...parseTypes(t.queryType), ')'];
         case 'inferred':
