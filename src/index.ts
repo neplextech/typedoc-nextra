@@ -110,7 +110,16 @@ export async function createDocumentation(options: TypeDocNextraInit): Promise<D
             timestamp: 0
         }
     };
-    const modules = data?.kind === TypeDoc.ReflectionKind.Project ? [data] : data?.children?.filter((res) => res.kind === TypeDoc.ReflectionKind.Module);
+
+    const modules = (() => {
+        if (data?.kind === TypeDoc.ReflectionKind.Project) {
+            const childs = data.children?.filter((r) => r.kind === TypeDoc.ReflectionKind.Module);
+            if (!childs?.length) return [data];
+            return childs;
+        }
+
+        return data?.children?.filter((r) => r.kind === TypeDoc.ReflectionKind.Module);
+    })();
 
     const mdTransformer = new TypeDocNextra({
         links: options.links,

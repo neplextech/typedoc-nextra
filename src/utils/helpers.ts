@@ -29,6 +29,7 @@ export function escape(src: string) {
 }
 
 export function parseType(t: JSONOutput.SomeType): string {
+    if (!t?.type) return '';
     switch (t.type) {
         case 'array':
             return `Array<${parseType(t.elementType)}>`;
@@ -92,6 +93,7 @@ export function parseType(t: JSONOutput.SomeType): string {
 }
 
 export function parseTypes(t: JSONOutput.SomeType): string[] {
+    if (!t?.type) return [''];
     switch (t.type) {
         case 'array':
             return ['Array', '<', ...parseTypes(t.elementType), '>'];
