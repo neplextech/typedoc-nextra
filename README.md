@@ -1,26 +1,24 @@
 # typedoc-nextra
 
-Use TypeDoc with Nextra
+Generate markdown/simple json from typedoc
 
 # Installation
 
 ```sh
-yarn add typedoc-nextra
+yarn add typedoc-nextra typedoc
 ```
-
-> This tool was built for generating docs automatically to be used in nextra. However, it can be used elsewhere.
 
 # Output Directory Structure
 
-* output/
-  * classes/
-    * module/
-      * class.mdx
-  * types/
-    * module/
-      * type.mdx
-  * custom/
-    * file.mdx
+-   output/
+    -   classes/
+        -   module/
+            -   class.mdx
+    -   types/
+        -   module/
+            -   type.mdx
+    -   custom/
+        -   file.mdx
 
 # Example
 

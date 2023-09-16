@@ -1,19 +1,19 @@
 {
   "name": "typedoc-nextra",
-  "scripts": {
-    "build": "tsup",
-    "check": "tsc --noEmit",
-    "test": "node ./test/index.js",
-    "format": "prettier --write \"./src/**/*.{js,ts,jsx,tsx}\""
-  },
-  "description": "Use TypeDoc with Nextra",
-  "version": "0.1.5",
+  "description": "Generate markdown/simple json from typedoc",
+  "version": "0.1.6",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
+  "scripts": {
+    "build": "tsup",
+    "check": "tsc --noEmit",
+    "test": "node ./test/index.js",
+    "format": "prettier --write \"./src/**/*.{js,ts,jsx,tsx}\""
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/neplextech/typedoc-nextra.git"
@@ -39,11 +39,11 @@
     "@types/tmp": "^0.2.3",
     "prettier": "^2.8.3",
     "tsup": "^6.5.0",
+    "typedoc": "^0.25.1",
     "typescript": "^4.9.4"
   },
   "dependencies": {
     "common-tags": "^1.8.2",
-    "tmp": "^0.2.1",
-    "typedoc": "^0.23.24"
+    "tmp": "^0.2.1"
   }
 }

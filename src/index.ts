@@ -78,19 +78,17 @@ export async function createDocumentation(options: TypeDocNextraInit): Promise<D
     if (options.jsonInputPath) {
         data = JSON.parse(await readFile(options.jsonInputPath, 'utf-8')) as TypeDoc.JSONOutput.ProjectReflection;
     } else if (options.input) {
-        const app = new TypeDoc.Application();
+        const app = await TypeDoc.Application.bootstrap({
+            plugin: [],
+            entryPoints: options.input,
+            tsconfig: options.tsconfigPath
+        });
         const tmpOutputPath = path.join(tmp.dirSync().name, 'project-reflection.json');
 
         app.options.addReader(new TypeDoc.TSConfigReader());
         app.options.addReader(new TypeDoc.TypeDocReader());
 
-        app.bootstrap({
-            plugin: [],
-            entryPoints: options.input,
-            tsconfig: options.tsconfigPath
-        });
-
-        const _proj = app.convert();
+        const _proj = await app.convert();
 
         if (_proj) {
             await app.generateJson(_proj, tmpOutputPath);
