@@ -1,3 +1,7 @@
+**This project has been replaced by [micro-docgen](https://github.com/neplextech/micro-docgen)**
+
+---
+
 # typedoc-nextra
 
 Generate markdown/simple json from typedoc
